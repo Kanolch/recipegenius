@@ -25,10 +25,19 @@ export default function Home() {
     },
     onSuccess: (data) => {
       setGeneratedRecipes(data.recipes);
-      toast({
-        title: "Recipes Generated!",
-        description: `Created ${data.recipes.length} delicious recipes for you.`,
-      });
+      
+      if (data.usedFallback) {
+        toast({
+          title: "Demo Recipes Generated",
+          description: "AI service is unavailable. Showing demo recipes based on your ingredients.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Recipes Generated!",
+          description: `Created ${data.recipes.length} delicious recipes for you.`,
+        });
+      }
     },
     onError: (error: Error) => {
       console.error("Recipe generation failed:", error);

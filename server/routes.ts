@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateRecipeRequestSchema } from "@shared/schema";
-import { generateRecipes } from "./services/openai";
+import { generateRecipes, generateFallbackRecipes } from "./services/openai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Generate recipes endpoint
@@ -10,8 +10,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { ingredients } = generateRecipeRequestSchema.parse(req.body);
       
-      // Generate recipes using OpenAI
-      const generatedRecipes = await generateRecipes(ingredients);
+      let generatedRecipes;
+      let usedFallback = false;
+      
+      try {
+        // Try to generate recipes using OpenAI
+        generatedRecipes = await generateRecipes(ingredients);
+      } catch (aiError: any) {
+        console.log("OpenAI failed, using fallback recipes");
+        generatedRecipes = await generateFallbackRecipes(ingredients);
+        usedFallback = true;
+      }
       
       // Store recipes in memory storage
       const savedRecipes = await Promise.all(
@@ -23,27 +32,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         )
       );
       
-      res.json({ recipes: savedRecipes });
+      res.json({ 
+        recipes: savedRecipes,
+        usedFallback,
+        message: usedFallback ? "AI service unavailable - showing demo recipes" : undefined
+      });
     } catch (error: any) {
       console.error("Recipe generation error:", error);
       
       if (error.name === "ZodError") {
         return res.status(400).json({ 
-          message: "Invalid request data", 
-          errors: error.errors 
-        });
-      }
-      
-      if (error.message && (error.message.includes("OpenAI") || error.message.includes("API") || error.message.includes("rate limit") || error.message.includes("quota"))) {
-        return res.status(503).json({ 
-          message: "Our AI service is currently busy. Please try again in a few moments.",
-          error: error.message
+          message: "Invalid request data"
         });
       }
       
       res.status(500).json({ 
-        message: "Failed to generate recipes. Please check your ingredients and try again.",
-        error: error.message || "Unknown error occurred"
+        message: "Failed to generate recipes. Please try again later."
       });
     }
   });
@@ -62,8 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Get recipes error:", error);
       res.status(500).json({ 
-        message: "Failed to retrieve recipes",
-        error: error.message || "Unknown error occurred"
+        message: "Failed to retrieve recipes"
       });
     }
   });

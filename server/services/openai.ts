@@ -70,20 +70,26 @@ Make sure the recipes are practical, delicious, and use the ingredients I provid
   } catch (error: any) {
     console.error("OpenAI API Error:", error);
     
-    // For demo purposes, return mock recipes when OpenAI fails
-    console.log("Falling back to demo recipes for testing");
-    return [
+    // Re-throw the error to let the routes handle it properly
+    // This allows the API to return appropriate error responses to the client
+    throw error;
+  }
+}
+
+export async function generateFallbackRecipes(ingredients: string): Promise<GeneratedRecipe[]> {
+  console.log("Generating fallback demo recipes for ingredients:", ingredients);
+  
+  // Create ingredient-aware fallback recipes
+  const ingredientList = ingredients.toLowerCase().split(',').map(i => i.trim());
+  
+  return [
       {
-        title: "Mediterranean Chicken & Rice Bowl",
+        title: `Mediterranean ${ingredientList[0] || 'Ingredient'} Bowl`,
         ingredients: [
-          "chicken breast",
-          "bell peppers", 
-          "onions",
-          "garlic",
-          "olive oil",
-          "rice",
+          ...ingredientList.slice(0, 3),
           "lemon juice",
-          "oregano",
+          "oregano", 
+          "olive oil",
           "feta cheese"
         ],
         instructions: [
@@ -102,16 +108,11 @@ Make sure the recipes are practical, delicious, and use the ingredients I provid
         suggestedAdditions: ["cherry tomatoes", "kalamata olives", "fresh basil"]
       },
       {
-        title: "Asian-Style Chicken Stir Fry",
+        title: `Asian-Style ${ingredientList[0] || 'Ingredient'} Stir Fry`,
         ingredients: [
-          "chicken breast",
-          "bell peppers",
-          "onions", 
-          "garlic",
-          "olive oil",
-          "rice",
+          ...ingredientList.slice(0, 4),
           "soy sauce",
-          "ginger",
+          "ginger", 
           "sesame oil"
         ],
         instructions: [
@@ -129,14 +130,9 @@ Make sure the recipes are practical, delicious, and use the ingredients I provid
         suggestedAdditions: ["broccoli florets", "cashews", "green onions"]
       },
       {
-        title: "Spanish Chicken & Rice Paella",
+        title: `Spanish ${ingredientList[0] || 'Ingredient'} Paella`,
         ingredients: [
-          "chicken breast",
-          "bell peppers",
-          "onions",
-          "garlic", 
-          "olive oil",
-          "rice",
+          ...ingredientList.slice(0, 5),
           "saffron",
           "chicken broth",
           "paprika"
@@ -157,5 +153,4 @@ Make sure the recipes are practical, delicious, and use the ingredients I provid
         suggestedAdditions: ["green peas", "artichoke hearts", "lemon wedges"]
       }
     ];
-  }
 }
