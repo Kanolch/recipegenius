@@ -34,9 +34,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      if (error.message && (error.message.includes("OpenAI") || error.message.includes("API"))) {
+      if (error.message && (error.message.includes("OpenAI") || error.message.includes("API") || error.message.includes("rate limit") || error.message.includes("quota"))) {
         return res.status(503).json({ 
-          message: "Recipe generation service is temporarily unavailable. Please try again later.",
+          message: "Our AI service is currently busy. Please try again in a few moments.",
           error: error.message
         });
       }
