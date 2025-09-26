@@ -76,7 +76,7 @@ Return your answer as valid JSON with this exact structure:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", // ✅ changed from gpt-4
+      model: "gpt-3.5-turbo", // ✅ updated model
       messages: [
         {
           role: "system",

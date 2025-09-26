@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { apiRequest } from "@/lib/queryClient";
 import { Recipe } from "@shared/schema";
-import { BonusRecipe } from "@/lib/openai"; // import the new type
+import { BonusRecipe } from "@/lib/openai";
 
 import Header from "@/components/header";
 import IngredientInput from "@/components/ingredient-input";
@@ -24,6 +24,11 @@ export default function Home() {
     mutationFn: async (ingredients: string) => {
       const response = await apiRequest("POST", "/api/recipes/generate", { ingredients });
       return response.json();
+    },
+    onMutate: () => {
+      // Clear previous results while generating new ones
+      setGeneratedRecipes([]);
+      setBonusRecipe(null);
     },
     onSuccess: (data) => {
       setGeneratedRecipes(data.recipes);
@@ -48,7 +53,7 @@ export default function Home() {
     generateMutation.mutate(ingredients);
   };
 
-  const handleSaveRecipe = (recipe: Recipe) => {
+  const handleSaveRecipe = (recipe: Recipe | BonusRecipe) => {
     const isAlreadySaved = savedRecipes.some(saved => saved.id === recipe.id);
     if (isAlreadySaved) {
       setSavedRecipes(savedRecipes.filter(saved => saved.id !== recipe.id));
@@ -86,6 +91,7 @@ export default function Home() {
 
         {generateMutation.isPending && <LoadingState />}
 
+        {/* Generated Recipes */}
         {generatedRecipes.length > 0 && (
           <div className="space-y-6" data-testid="section-generated-recipes">
             <div className="flex items-center justify-between">
@@ -112,7 +118,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Bonus Recipe Section */}
+        {/* Bonus Recipe */}
         {bonusRecipe && (
           <div className="mt-8 p-4 border rounded-lg bg-card">
             <h2 className="text-xl font-bold mb-2">Bonus Recipe</h2>
@@ -142,6 +148,14 @@ export default function Home() {
             <p className="mt-2 text-sm text-muted-foreground">
               Cooking Time: {bonusRecipe.cookingTime} | Servings: {bonusRecipe.servings} | Difficulty: {bonusRecipe.difficulty}
             </p>
+
+            {/* Save Bonus Recipe Button */}
+            <button
+              className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              onClick={() => handleSaveRecipe(bonusRecipe)}
+            >
+              {savedRecipes.some(r => r.id === bonusRecipe.id) ? "Saved" : "Save Bonus Recipe"}
+            </button>
           </div>
         )}
 
