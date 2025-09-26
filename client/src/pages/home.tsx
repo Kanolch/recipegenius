@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalStorage } from "@/hooks/use-local-storage";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { Recipe } from "@shared/schema";
+import { BonusRecipe } from "@/lib/openai"; // import the new type
 
 import Header from "@/components/header";
 import IngredientInput from "@/components/ingredient-input";
@@ -14,6 +15,7 @@ import { ChefHat, Bot, Utensils } from "lucide-react";
 
 export default function Home() {
   const [generatedRecipes, setGeneratedRecipes] = useState<Recipe[]>([]);
+  const [bonusRecipe, setBonusRecipe] = useState<BonusRecipe | null>(null);
   const [savedRecipes, setSavedRecipes] = useLocalStorage<Recipe[]>("saved-recipes", []);
   const [likedRecipes, setLikedRecipes] = useLocalStorage<string[]>("liked-recipes", []);
   const { toast } = useToast();
@@ -25,19 +27,12 @@ export default function Home() {
     },
     onSuccess: (data) => {
       setGeneratedRecipes(data.recipes);
-      
-      if (data.usedFallback) {
-        toast({
-          title: "Demo Recipes Generated",
-          description: "AI service is unavailable. Showing demo recipes based on your ingredients.",
-          variant: "default",
-        });
-      } else {
-        toast({
-          title: "Recipes Generated!",
-          description: `Created ${data.recipes.length} delicious recipes for you.`,
-        });
-      }
+      setBonusRecipe(data.bonus);
+
+      toast({
+        title: "Recipes Generated!",
+        description: `Created ${data.recipes.length} delicious recipes plus a bonus recipe with a shopping list.`,
+      });
     },
     onError: (error: Error) => {
       console.error("Recipe generation failed:", error);
@@ -55,25 +50,17 @@ export default function Home() {
 
   const handleSaveRecipe = (recipe: Recipe) => {
     const isAlreadySaved = savedRecipes.some(saved => saved.id === recipe.id);
-    
     if (isAlreadySaved) {
       setSavedRecipes(savedRecipes.filter(saved => saved.id !== recipe.id));
-      toast({
-        title: "Recipe Removed",
-        description: "Recipe removed from your saved list.",
-      });
+      toast({ title: "Recipe Removed", description: "Recipe removed from your saved list." });
     } else {
       setSavedRecipes([...savedRecipes, recipe]);
-      toast({
-        title: "Recipe Saved!",
-        description: "Recipe added to your saved list.",
-      });
+      toast({ title: "Recipe Saved!", description: "Recipe added to your saved list." });
     }
   };
 
   const handleLikeRecipe = (recipe: Recipe) => {
     const isAlreadyLiked = likedRecipes.includes(recipe.id);
-    
     if (isAlreadyLiked) {
       setLikedRecipes(likedRecipes.filter(id => id !== recipe.id));
     } else {
@@ -82,7 +69,6 @@ export default function Home() {
   };
 
   const handleViewAllSaved = () => {
-    // This would navigate to a dedicated saved recipes page
     toast({
       title: "Coming Soon",
       description: "Dedicated saved recipes page will be available soon!",
@@ -92,7 +78,6 @@ export default function Home() {
   return (
     <div className="bg-background min-h-screen">
       <Header />
-      
       <main className="max-w-4xl mx-auto px-4 py-8">
         <IngredientInput 
           onGenerate={handleGenerateRecipes}
@@ -124,6 +109,39 @@ export default function Home() {
                 isLiked={likedRecipes.includes(recipe.id)}
               />
             ))}
+          </div>
+        )}
+
+        {/* Bonus Recipe Section */}
+        {bonusRecipe && (
+          <div className="mt-8 p-4 border rounded-lg bg-card">
+            <h2 className="text-xl font-bold mb-2">Bonus Recipe</h2>
+            <h3 className="text-lg font-semibold">{bonusRecipe.title}</h3>
+
+            <p className="mt-2 font-semibold">Ingredients (Base + New):</p>
+            <ul className="list-disc list-inside">
+              {bonusRecipe.ingredients.map((ing, i) => (
+                <li key={i}>{ing}</li>
+              ))}
+            </ul>
+
+            <p className="mt-2 font-semibold">Shopping List:</p>
+            <ul className="list-disc list-inside">
+              {bonusRecipe.shoppingList.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+
+            <p className="mt-2 font-semibold">Instructions:</p>
+            <ol className="list-decimal list-inside">
+              {bonusRecipe.instructions.map((step, i) => (
+                <li key={i}>{step}</li>
+              ))}
+            </ol>
+
+            <p className="mt-2 text-sm text-muted-foreground">
+              Cooking Time: {bonusRecipe.cookingTime} | Servings: {bonusRecipe.servings} | Difficulty: {bonusRecipe.difficulty}
+            </p>
           </div>
         )}
 
