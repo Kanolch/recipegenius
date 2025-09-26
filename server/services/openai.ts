@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export interface GeneratedRecipe {
@@ -23,10 +23,16 @@ export interface BonusRecipe {
   difficulty: string;
 }
 
-export async function generateRecipes(ingredients: string): Promise<{
+export async function generateRecipes(
+  ingredients: string
+): Promise<{
   recipes: GeneratedRecipe[];
   bonus: BonusRecipe;
 }> {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("Missing OpenAI API key. Set OPENAI_API_KEY in your environment.");
+  }
+
   const prompt = `The user has these base ingredients: ${ingredients}.
 
 Your tasks:
@@ -68,27 +74,33 @@ Return your answer as valid JSON with this exact structure:
   }
 }`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a creative and skilled chef. Always strictly follow the constraints given, use only the allowed ingredients for the first 3 recipes, and always respond with valid JSON in the requested format."
-      },
-      { role: "user", content: prompt }
-    ],
-    response_format: { type: "json_object" }
-  });
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo", // ✅ changed from gpt-4
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a creative and skilled chef. Always strictly follow the constraints given, use only the allowed ingredients for the first 3 recipes, and always respond with valid JSON in the requested format.",
+        },
+        { role: "user", content: prompt },
+      ],
+    });
 
-  const raw = response.choices[0].message.content || "{}";
-  console.log("AI raw output:", raw);
+    const raw = response.choices[0].message.content || "{}";
+    console.log("AI raw output:", raw);
 
-  const result = JSON.parse(raw);
+    const result = JSON.parse(raw);
 
-  if (!result.recipes || !Array.isArray(result.recipes) || !result.bonus) {
-    throw new Error("Invalid response format from OpenAI");
+    if (!result.recipes || !Array.isArray(result.recipes) || !result.bonus) {
+      throw new Error("Invalid response format from OpenAI");
+    }
+
+    return result;
+  } catch (error: any) {
+    console.error("OpenAI API Error:", error);
+    throw new Error(
+      "Failed to generate recipes. Make sure your API key is correct and the model is accessible."
+    );
   }
-
-  return result;
 }
